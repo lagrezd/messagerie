@@ -41,7 +41,7 @@ class ConversationsController extends Controller
         return view('conversations/show', [
             'users' => $this->r->getConversations($this->auth->user()->id),
             'user' => $user,
-            'messages' => $this->r->getMessagesFor($this->auth->user()->id, $user->id)->get()->reverse()
+            'messages' => $this->r->getMessagesFor($this->auth->user()->id, $user->id)->paginate(50)
         ]);
     }
 
