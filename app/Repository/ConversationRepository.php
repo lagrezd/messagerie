@@ -27,10 +27,11 @@ class ConversationRepository {
     }
 
     public function getConversations (int $userId) {
-        return $this->user->newQuery()
+        $conversations = $this->user->newQuery()
             ->select('name', 'id')
             ->where('id', '!=', $userId)
             ->get();
+        return $conversations;
     }
 
     public function createMessage (string $content, int $from, int $to) {
@@ -52,7 +53,36 @@ class ConversationRepository {
         return $this->message
             ->newQuery()
             ->whereRaw("((from_id = $from AND to_id = $to) OR (from_id = $to AND to_id = $from))")
-            ->orderBy('created_at', 'DESC');
+            ->orderBy('created_at', 'DESC')
+            ->with([
+                'from' => function($query) { return $query->select('name', 'id');}
+            ]);
+    }
+
+    /**
+     * Récupère le nombre de messages non lus pour chaque conversation
+     * @param int $userId
+     * @return Builder[]|\Illuminate\Database\Eloquent\Collection|\Illuminate\Database\Query\Builder[]|\Illuminate\Support\Collection
+     */
+    public function unreadCount (int $userId)
+    {
+        return $this->message->newQuery()
+            ->where('to_id', $userId)
+            ->groupBy('from_id')
+            ->selectRaw('from_id, COUNT(id) as count')
+            ->whereRaw('read_at IS NULL')
+            ->get()
+            ->pluck('count', 'from_id');
+    }
+
+    /**
+     * Marque tous les messages de cet utilisateur comme lu
+     * @param int $from
+     * @param int $to
+     */
+    public function readAllFrom(int $from, int $to)
+    {
+        $this->message->where('from_id', $from)->where('to_id', $to)->update(['read_at' => Carbon::now()]);
     }
 
 }
